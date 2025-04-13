@@ -3,37 +3,13 @@ program q2df_generalization
     implicit none
     
     call test_get_optimal_bcs()
-    
-    ! real(WP) :: Z1_CFD_glob, Z2_CFD_glob, chi11_CFD_glob, chi12_CFD_glob, chi22_CFD_glob, leftover_ox1_CFD_glob, &
-    !     leftover_ox2_CFD_glob, leftover_ox3_CFD_glob
-    ! real(WP), dimension(3) :: OMIX_glob, FMIX_glob
-    ! real(WP) :: chi_xi_glob
-    ! real(WP) :: chi_eta_glob, x_prime_glob, eta_opt_glob, xi_opt_glob
-    
-    ! print *, "Starting"
-    ! Z1_CFD_glob = 0.334_WP
-    ! Z2_CFD_glob = 0.129_WP
-    ! chi11_CFD_glob = 3.743_WP
-    ! chi12_CFD_glob = -1.348_WP
-    ! chi22_CFD_glob = 2.1893_WP
-    
-    ! leftover_ox1_CFD_glob = -1.0_WP / 92.14_WP * 9.0_WP * 31.999_WP
-    ! leftover_ox2_CFD_glob = 1.0_WP * 0.23292_WP
-    ! leftover_ox3_CFD_glob = -1.0_WP / 100.21_WP * 11.0_WP * 31.999_WP
-
-    ! call get_optimal_bcs(Z1_CFD_glob, Z2_CFD_glob, chi11_CFD_glob, chi12_CFD_glob, chi22_CFD_glob, &
-    !     leftover_ox1_CFD_glob, leftover_ox2_CFD_glob, leftover_ox3_CFD_glob, OMIX_glob, FMIX_glob, &
-    !     chi_xi_glob, chi_eta_glob, x_prime_glob, eta_opt_glob, xi_opt_glob)
-
-    ! print *, "Optimal 1D domain (OMIX, FMIX, chi):"
-    ! print *, OMIX_glob
-    ! print *, FMIX_glob
-    ! print *, chi_xi_glob
 
     contains
 
+! IMPORTANT: Do not forget to use the mkl library erfc^-1 function to find chi_ZZ at reference mixture fraction
+! given that it is chi_xi at Z_opt. Z_stoic is also output by the program for convenience.
 subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, leftover_ox1_CFD, &
-    leftover_ox2_CFD, leftover_ox3_CFD, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_opt, eta_opt)
+    leftover_ox2_CFD, leftover_ox3_CFD, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_opt, eta_opt, Z_stoic)
     ! Here, the real numbers leftover_ox# represent the kg's of oxygen mass leftover if complete combustion is
     ! done on 1 kg of stream #. As expected, negative indicates stream # is fuel-rich.
     use precision
@@ -44,6 +20,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     real(WP), dimension(3), intent(out) :: OMIX, FMIX
     real(WP), intent(out) :: chi_xi
     real(WP), intent(out) :: chi_eta, x_prime, Z_opt, eta_opt ! Outputs not necessary for CFD, but instructive to dump
+    real(WP), intent(out) :: Z_stoic
 
     ! Making arrays of the mixture fractions, dissipation rates, and leftover oxygen to make the data storage
     ! "symmetric" with regard to Z1, Z2, and Z3 rather than just storing Z1, Z2, and their dissipation rates
@@ -166,8 +143,10 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     chi_eta = chi_eta_val(Z1, Z2, chi11, chi12, chi22, x_opt)
     eta_opt = eta_val(Z1, Z2, x_opt)
     Z_opt = xi_val(Z1, Z2, x_opt)
+    Z_stoic = leftover_ox_left / (leftover_ox_left - leftover_ox_right)
     if (complement_xi) then
         Z_opt = 1 - Z_opt
+        Z_stoic = 1 - Z_stoic
     end if
 
     if (i_opt == 1 .and. j_opt == 2) then
@@ -447,7 +426,7 @@ subroutine test_get_optimal_bcs()
 
     real(WP), dimension(3) :: OMIX, FMIX
     real(WP) :: chi_xi
-    real(WP) :: chi_eta, x_prime, eta_opt, Z_opt
+    real(WP) :: chi_eta, x_prime, eta_opt, Z_opt, Z_stoic
 
     integer :: num_failures
     num_failures = 0
@@ -1194,7 +1173,7 @@ subroutine test_get_optimal_bcs()
         print *, "Checking ", i
         call get_optimal_bcs(Z1_CFD_list(i), Z2_CFD_list(i), chi11_CFD_list(i), chi12_CFD_list(i), &
             chi22_CFD_list(i), leftover_ox1_CFD, leftover_ox2_CFD, leftover_ox3_CFD, OMIX, FMIX, chi_xi, &
-            chi_eta, x_prime, Z_opt, eta_opt)
+            chi_eta, x_prime, Z_opt, eta_opt, Z_stoic)
         num_failures = num_failures + is_failure(OMIX_truth(i, 1), OMIX(1), "OMIX1")
         num_failures = num_failures + is_failure(OMIX_truth(i, 2), OMIX(2), "OMXI2")
         num_failures = num_failures + is_failure(OMIX_truth(i, 3), OMIX(3), "OMIX3")
