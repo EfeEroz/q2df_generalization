@@ -52,7 +52,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     chi(2,1) = chi12_CFD; chi(2,2) = chi22_CFD; chi(2, 3) = chi23_CFD
     chi(3,1) = chi13_CFD; chi(3,2) = chi23_CFD; chi(3, 3) = chi33_CFD
     
-    chi_ratio_opt = 100000.0_WP
+    chi_ratio_opt = huge(1.0_WP)
     leftover_ox_CFD = [leftover_ox1_CFD, leftover_ox2_CFD, leftover_ox3_CFD]
     ! Permutes the stream identities by changing i and j, thereby giving every possible one-dimensional 
     ! domain consideration
