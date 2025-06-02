@@ -44,6 +44,8 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     real(WP) :: x_prime_left, x_prime_right
     logical :: complement_xi
 
+    real(WP) :: q2df2_chi_ratio, q2df2_xi, q2df2_eta, q2df2_chi_ratio_check, generalized_chi_ratio
+
     Z = [Z1_CFD, Z2_CFD, 1.0_WP - Z1_CFD - Z2_CFD]
 
     chi13_CFD = -chi11_CFD - chi12_CFD
@@ -154,6 +156,50 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     if (complement_xi) then
         Z_opt = 1 - Z_opt
         Z_stoic = 1 - Z_stoic
+    end if
+
+    ! Add testing with Q2DF2 (make sure chi ratio is computed correctly for Q2DF2 and that the generalized choice
+    ! is at least as good as Q2DF2, as quantified by psi (chi ratio)
+    q2df2_chi_ratio = chi_ratio_val(Z(1), Z(3), chi(1, 1), chi(1, 3), chi(3, 3), 0.0000000001_WP)
+    q2df2_xi = Z(1) + Z(3)
+    q2df2_eta = Z(3) / (Z(1) + Z(3))
+    q2df2_chi_ratio_check = (chi(1, 1) + 2.0_WP*(1.0_WP-q2df2_eta)*chi(1, 2) + (1.0_WP-q2df2_eta)**2.0_WP*chi(2, 2)) / &
+        (q2df2_xi**2.0_WP * chi(2, 2))
+    if (abs(q2df2_chi_ratio - q2df2_chi_ratio_check) > 0.001_WP) then
+        print *, "ALERT", q2df2_chi_ratio, q2df2_chi_ratio_check
+    end if
+
+    ! Continued testing:
+    generalized_chi_ratio = chi_eta / chi_xi
+    if (ieee_is_nan(q2df2_chi_ratio) .or. ieee_is_nan(generalized_chi_ratio)) then
+        print *, "NaN ISSUE:", q2df2_chi_ratio, generalized_chi_ratio
+    end if
+    if (q2df2_chi_ratio < generalized_chi_ratio) then
+        print *, ">>>>   ISSUE", q2df2_chi_ratio, "<", generalized_chi_ratio
+
+        print *, "Optimal i, j, and x", i_opt, j_opt, x_opt
+        Z1 = Z(i_opt)
+        Z2 = Z(j_opt)
+        leftover_ox = [leftover_ox_CFD(i_opt), leftover_ox_CFD(j_opt), leftover_ox_CFD(1+2+3-i_opt-j_opt)]
+        call get_valid_x_ranges(Z1, Z2, leftover_ox, left_endpoints, right_endpoints)
+        print *, "Optimal left endpoints", left_endpoints
+        print *, "Optimal right endpoints", right_endpoints
+        deallocate(left_endpoints)
+        deallocate(right_endpoints)
+
+        call get_valid_x_ranges(Z(3), Z(1), [leftover_ox_CFD(3), leftover_ox_CFD(1), leftover_ox_CFD(2)], &
+            left_endpoints, right_endpoints)
+        print *, "Q2DF2-1 left endpoints", left_endpoints
+        print *, "Q2DF2-1 right endpoints", right_endpoints
+        deallocate(left_endpoints)
+        deallocate(right_endpoints)
+
+        call get_valid_x_ranges(Z(1), Z(3), [leftover_ox_CFD(1), leftover_ox_CFD(3), leftover_ox_CFD(2)], &
+            left_endpoints, right_endpoints)
+        print *, "Q2DF2-2 left endpoints", left_endpoints
+        print *, "Q2DF2-2 right endpoints", right_endpoints
+        deallocate(left_endpoints)
+        deallocate(right_endpoints)
     end if
 
     if (i_opt == 1 .and. j_opt == 2) then
