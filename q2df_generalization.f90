@@ -13,6 +13,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     ! Here, the real numbers leftover_ox# represent the kg's of oxygen mass leftover if complete combustion is
     ! done on 1 kg of stream #. As expected, negative indicates stream # is fuel-rich.
     use precision
+    use, intrinsic :: ieee_arithmetic
     implicit none
 
     real(WP), intent(in) :: Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, leftover_ox1_CFD, &
@@ -92,6 +93,12 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
                 do k = 1, size(x_opt_candidates)
                     x_opt_candidate = x_opt_candidates(k)
                     chi_ratio = chi_ratio_val(Z1, Z2, chi11, chi12, chi22, x_opt_candidate)
+
+                    if (ieee_is_nan(chi_ratio)) then
+                        x_opt_candidate = abs(x_opt_candidate - 0.0000000001_WP)
+                    end if
+                    chi_ratio = chi_ratio_val(Z1, Z2, chi11, chi12, chi22, x_opt_candidate)
+
                     if (chi_ratio < chi_ratio_opt) then
                         i_opt = i
                         j_opt = j
