@@ -316,7 +316,7 @@ subroutine get_x_extrema(Z1, Z2, chi11, chi12, chi22, x_extrema)
     end do
 
     allocate(x_extrema(0))
-    do i = 1, GRID
+    do i = 1, GRID - 1
         if (dchiratio_dx_arr(i) * dchiratio_dx_arr(i + 1) <= 0) then
             call append(x_extrema, x + step_size * (i - 0.5_WP))
         end if
