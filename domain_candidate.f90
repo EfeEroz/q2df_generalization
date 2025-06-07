@@ -72,13 +72,13 @@ real(WP) function get_chi_ratio()
     get_chi_ratio = cand_chi_ratio
 end function get_chi_ratio
 
-subroutine get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, xi_stoic)
+subroutine get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic)
     use precision
     implicit none
     integer, intent(in) :: i_opt, j_opt
     real(WP), dimension(3), intent(in) :: leftover_ox
     real(WP), dimension(3), intent(out) :: OMIX, FMIX
-    real(WP), intent(out) :: chi_xi, chi_eta, x_prime, Z_val, eta, xi_stoic
+    real(WP), intent(out) :: chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic
 
     real(WP) :: a
     real(WP) :: leftover_ox_left, leftover_ox_right
@@ -93,7 +93,7 @@ subroutine get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta
     eta = cand_eta
     a = x*b
     
-    ! Computation of OMIX, FMIX, x_prime, xi_stoic below:
+    ! Computation of OMIX, FMIX, x_prime, Z_stoic below:
     leftover_ox_left = a*leftover_ox(1) + (1.0_WP-a)*leftover_ox(3)
     leftover_ox_right = b*leftover_ox(1) + (1.0_WP-b)*leftover_ox(2)
 
@@ -118,10 +118,10 @@ subroutine get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta
     FMIX(1+2+3-i_opt-j_opt) = FMIX_shuffled(3)
     
     ! print *, "VALUES FOR COMPARING", cand_Z1, ",", cand_Z2, ",", cand_chi11, ",", cand_chi12, ",", cand_chi22, ",", x
-    xi_stoic = leftover_ox_left / (leftover_ox_left - leftover_ox_right)
+    Z_stoic = leftover_ox_left / (leftover_ox_left - leftover_ox_right)
     if (complement_xi) then
         Z_val = 1.0_WP - Z_val
-        xi_stoic = 1.0_WP - xi_stoic
+        Z_stoic = 1.0_WP - Z_stoic
     end if
 
     if (i_opt == 1 .and. j_opt == 2) then
@@ -151,15 +151,15 @@ subroutine get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta
     if (min(minval(OMIX), minval(FMIX)) < -TOL) print *, "OMIX/FMIX negative values", OMIX, FMIX
     if (min(chi_xi, chi_eta) < -TOL) print *, "Negative chi", chi_xi, chi_eta
     if (.not. (in_range(x_prime/6.0_WP) .and. in_range(x) .and. in_range(Z_val) .and. in_range(eta) &
-        .and. in_range(xi_stoic))) then
-        print *, "Not in range", x_prime, x, Z_val, eta, xi_stoic
+        .and. in_range(Z_stoic))) then
+        print *, "Not in range", x_prime, x, Z_val, eta, Z_stoic
     end if
     ! Robust:
-    ! chi_xi = max(chi_xi, 0.0_WP)
-    ! chi_eta = max(chi_eta, 0.0_WP)
-    ! Z_val = max(min(Z_val, 1.0_WP), 0.0_WP)
-    ! eta = max(min(eta, 1.0_WP), 0.0_WP)
-    ! xi_stoic = max(min(xi_stoic, 1.0_WP), 0.0_WP)    
+    chi_xi = max(chi_xi, 0.0_WP)
+    chi_eta = max(chi_eta, 0.0_WP)
+    Z_val = max(min(Z_val, 1.0_WP), 0.0_WP)
+    eta = max(min(eta, 1.0_WP), 0.0_WP)
+    Z_stoic = max(min(Z_stoic, 1.0_WP), 0.0_WP)    
 end subroutine get_final_vars
 
 logical function eq(num1, num2)
@@ -181,7 +181,7 @@ end function in_range
 subroutine perturb_x()
     use precision
     implicit none
-    ! x = mod(x + 0.0000001_WP, 1.0_WP)   ! Robust
+    x = mod(x + 0.0000001_WP, 1.0_WP)   ! Robust
 end subroutine perturb_x
 
 end module domain_candidate

@@ -2,7 +2,7 @@ program q2df_generalization
     use precision
     implicit none
     real(WP) :: num1, num2, num3
-    real(WP), parameter :: TOL = 0.000001_WP
+    real(WP), parameter :: TOLER = 0.000001_WP
     
     call test_get_optimal_bcs()
 
@@ -19,7 +19,7 @@ program q2df_generalization
 ! IMPORTANT: Do not forget to use the mkl library erfc^-1 function to find chi_ZZ at reference mixture fraction
 ! given that it is chi_xi at Z_opt. Z_stoic is also output by the program for convenience.
 subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, leftover_ox1_CFD, &
-    leftover_ox2_CFD, leftover_ox3_CFD, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, xi_stoic)
+    leftover_ox2_CFD, leftover_ox3_CFD, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic)
     ! Here, the real numbers leftover_ox# represent the kg's of oxygen mass leftover if complete combustion is
     ! done on 1 kg of stream #. As expected, negative indicates stream # is fuel-rich.
     use precision
@@ -33,7 +33,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     real(WP), dimension(3), intent(out) :: OMIX, FMIX
     real(WP), intent(out) :: chi_xi
     real(WP), intent(out) :: chi_eta, x_prime, Z_val, eta ! Outputs not necessary for CFD, but instructive to dump
-    real(WP), intent(out) :: xi_stoic
+    real(WP), intent(out) :: Z_stoic
 
     ! Making arrays of the mixture fractions, dissipation rates, and leftover oxygen to make the data storage
     ! "symmetric" with regard to Z1, Z2, and Z3 rather than just storing Z1, Z2, and their dissipation rates
@@ -58,7 +58,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     if (.not. (in_range(Z1_CFD) .and. in_range(Z2_CFD) .and. in_range(Z1_CFD+Z2_CFD))) then
         print *, "Mixture fraction input invalid:", "Z1 =", Z1_CFD, "Z2 =", Z2_CFD
     end if
-    if (chi11_CFD<-TOL .or. chi22_CFD<-TOL .or. chi12_CFD**2 - TOL > chi11_CFD*chi22_CFD) then
+    if (chi11_CFD<-TOLER .or. chi22_CFD<-TOLER .or. chi12_CFD**2 - TOLER > chi11_CFD*chi22_CFD) then
         print *, "Dissipation rate input invalid:", "chi11 =", chi11_CFD, "chi12 =", chi12_CFD, "chi22 =", chi22_CFD
     end if
     if (leftover_ox1_CFD * leftover_ox2_CFD > 0.0_WP .and. leftover_ox1_CFD * leftover_ox3_CFD > 0.0_WP) then
@@ -67,21 +67,21 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     end if
 
     ! Robust
-    ! Z1_CFD_new = max(min(Z1_CFD, 1.0_WP), 0.0_WP)
-    ! Z2_CFD_new = max(min(Z2_CFD, 1.0_WP), 0.0_WP)
-    ! chi11_CFD_new = max(chi11_CFD, 0.0_WP)
-    ! chi22_CFD_new = max(chi22_CFD, 0.0_WP)
-    ! chi12_CFD_new = chi12_CFD
-    ! ! TODO: analogous for chi12
-    ! if (max(chi11_CFD_new, chi22_CFD_new) < 0.000000001_WP) then
-    !     if (chi22_CFD_new > chi11_CFD_new) then
-    !         chi22_CFD_new = 0.000000001_WP
-    !     else
-    !         chi11_CFD_new = 0.000000001_WP
-    !     end if
-    ! end if
+    Z1_CFD_new = max(min(Z1_CFD, 1.0_WP), 0.0_WP)
+    Z2_CFD_new = max(min(Z2_CFD, 1.0_WP), 0.0_WP)
+    chi11_CFD_new = max(chi11_CFD, 0.0_WP)
+    chi22_CFD_new = max(chi22_CFD, 0.0_WP)
+    chi12_CFD_new = chi12_CFD
+    ! TODO: analogous for chi12
+    if (max(chi11_CFD_new, chi22_CFD_new) < 0.000000001_WP) then
+        if (chi22_CFD_new > chi11_CFD_new) then
+            chi22_CFD_new = 0.000000001_WP
+        else
+            chi11_CFD_new = 0.000000001_WP
+        end if
+    end if
 
-    Z1_CFD_new = Z1_CFD; Z2_CFD_new = Z2_CFD; chi11_CFD_new = chi11_CFD; chi12_CFD_new = chi12_CFD; chi22_CFD_new = chi22_CFD ! TODO, comment out
+    ! Z1_CFD_new = Z1_CFD; Z2_CFD_new = Z2_CFD; chi11_CFD_new = chi11_CFD; chi12_CFD_new = chi12_CFD; chi22_CFD_new = chi22_CFD
 
     Z = [Z1_CFD_new, Z2_CFD_new, 1.0_WP - Z1_CFD_new - Z2_CFD_new]
 
@@ -149,7 +149,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
 
     leftover_ox = [leftover_ox_CFD(i_opt), leftover_ox_CFD(j_opt), leftover_ox_CFD(1+2+3-i_opt-j_opt)]
     call set_dom_cand_inputs(Z(i_opt), Z(j_opt), chi(i_opt, i_opt), chi(i_opt, j_opt), chi(j_opt, j_opt), x_opt)
-    call get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, xi_stoic)
+    call get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic)
 
     ! Add testing with Q2DF2 (make sure chi ratio is computed correctly for Q2DF2 and that the generalized choice
     ! is at least as good as Q2DF2, as quantified by psi (chi ratio)
@@ -170,7 +170,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     if (ieee_is_nan(q2df2_chi_ratio) .or. ieee_is_nan(generalized_chi_ratio)) then
         print *, "NaN ISSUE:", q2df2_chi_ratio, generalized_chi_ratio
     end if
-    if (q2df2_chi_ratio + TOL < generalized_chi_ratio) then
+    if (q2df2_chi_ratio + TOLER < generalized_chi_ratio) then
         print *, ">>>>   ISSUE", q2df2_chi_ratio, "<", generalized_chi_ratio
 
         print *, "Optimal i, j, and x", i_opt, j_opt, x_opt
@@ -261,10 +261,10 @@ subroutine get_valid_x_ranges(Z1, Z2, leftover_ox, left_endpoints, right_endpoin
     allocate(right_endpoints(0))
     do i = 1, size(x_boundaries_valid)
         if (x_boundaries_valid(i) > 0.5_WP) then   ! Again, using 1.0 for True and 0.0 for False
-            if (x_boundaries(i) + TOL < x_boundaries(i+1)) print *, "Issue x_boundaries", x_boundaries
-            if (.true.) then !(x_boundaries(i) - x_boundaries(i+1) > 0.000002001_WP) then   ! Robust
-                call append(left_endpoints, x_boundaries(i+1)) ! + 0.000001_WP)   ! Robust
-                call append(right_endpoints, x_boundaries(i)) ! - 0.000001_WP)   ! Robust
+            if (x_boundaries(i) + TOLER < x_boundaries(i+1)) print *, "Issue x_boundaries", x_boundaries
+            if (x_boundaries(i) - x_boundaries(i+1) > 0.000002001_WP) then   ! Robust
+                call append(left_endpoints, x_boundaries(i+1) + 0.000001_WP)   ! Robust
+                call append(right_endpoints, x_boundaries(i) - 0.000001_WP)   ! Robust
             end if
         end if
     end do
