@@ -34,11 +34,11 @@ subroutine compute_intermediate_vars()
     success = .false.
     do attempt = 1, 5
         cand_Z3 = 1.0_WP - cand_Z1 - cand_Z2
-        if ((cand_Z1+cand_Z2+x*(cand_Z1+cand_Z3))**2 - 4.0_WP*cand_Z1*x < -TOL .or. eq(2.0_WP*x, 0.0_WP)) then
+        if ((cand_Z1+cand_Z2+x*(cand_Z1+cand_Z3))**2.0_WP - 4.0_WP*cand_Z1*x < -TOL .or. eq(2.0_WP*x, 0.0_WP)) then
             call perturb_x()
             cycle
         end if
-        b = (cand_Z1+cand_Z2+x*(cand_Z1+cand_Z3) - sqrt((cand_Z1+cand_Z2+x*(cand_Z1+cand_Z3))**2 - &
+        b = (cand_Z1+cand_Z2+x*(cand_Z1+cand_Z3) - sqrt((cand_Z1+cand_Z2+x*(cand_Z1+cand_Z3))**2.0_WP - &
             4.0_WP*cand_Z1*x)) / (2.0_WP*x)
         cand_eta = b
         if (eq(b, 1.0_WP)) then
@@ -46,11 +46,11 @@ subroutine compute_intermediate_vars()
             cycle
         end if
         cand_xi = cand_Z2 / (1.0_WP - b)
-        cand_chi_eta_numer = (1.0_WP-cand_eta)**2*cand_chi11 - 2.0_WP*cand_eta*(1.0_WP-cand_eta)*(1.0_WP-x)*cand_chi12 + &
-            (cand_eta*(1.0_WP-x))**2*cand_chi22
-        cand_chi_xi_numer = cand_xi**2*cand_chi11 + 2.0_WP*cand_xi*(x+(1.0_WP-x)*cand_xi)*cand_chi12 + &
-            (x+(1.0_WP-x)*cand_xi)**2*cand_chi22
-        cand_chi_denom = ((1.0_WP-cand_eta)*(x+(1.0_WP-x)*cand_xi) + cand_eta*cand_xi*(1.0_WP-x))**2
+        cand_chi_eta_numer = (1.0_WP-cand_eta)**2.0_WP*cand_chi11 - 2.0_WP*cand_eta*(1.0_WP-cand_eta)*(1.0_WP-x)*cand_chi12 + &
+            (cand_eta*(1.0_WP-x))**2.0_WP*cand_chi22
+        cand_chi_xi_numer = cand_xi**2.0_WP*cand_chi11 + 2.0_WP*cand_xi*(x+(1.0_WP-x)*cand_xi)*cand_chi12 + &
+            (x+(1.0_WP-x)*cand_xi)**2.0_WP*cand_chi22
+        cand_chi_denom = ((1.0_WP-cand_eta)*(x+(1.0_WP-x)*cand_xi) + cand_eta*cand_xi*(1.0_WP-x))**2.0_WP
         if (eq(cand_chi_denom, 0.0_WP) .or. eq(cand_chi_xi_numer, 0.0_WP)) then
             call perturb_x()
             cycle
@@ -85,13 +85,26 @@ subroutine get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta
     real(WP), dimension(3) :: OMIX_shuffled, FMIX_shuffled
     real(WP) :: x_prime_left, x_prime_right
     logical :: complement_xi
+    real(WP) :: sum_Z1_Z2
 
     call compute_intermediate_vars()
-    chi_xi = cand_chi_xi
-    chi_eta = cand_chi_eta
-    Z_val = cand_xi
-    eta = cand_eta
-    a = x*b
+    if (cand_chi_ratio > -0.5_WP) then
+        chi_xi = cand_chi_xi
+        chi_eta = cand_chi_eta
+        Z_val = cand_xi
+        eta = cand_eta
+        a = x*b
+    else
+        if (.not. (i_opt == 1 .and. j_opt == 3 .and. eq(x, 0.0_WP))) print *, "Major logic error"
+        sum_Z1_Z2 = cand_Z1 + cand_Z2
+        if (sum_Z1_Z2 == 0.0_WP) sum_Z1_Z2 = 0.00000001_WP   ! To prevent division by 0
+        Z_val = sum_Z1_Z2   ! HACK: For non-oxygen-rich second streams, may need to be complement of this
+        eta = cand_Z2 / sum_Z1_Z2
+        chi_xi = cand_chi11 + 2.0_WP*cand_chi12 + cand_chi22
+        chi_eta = (cand_chi11 + 2.0_WP*(1.0_WP-eta)*(-cand_chi11-cand_chi12) + &
+            (1.0_WP-eta)**2.0_WP*chi_xi) / (sum_Z1_Z2**2.0_WP)
+        a = 0.0_WP
+    end if
     
     ! Computation of OMIX, FMIX, x_prime, Z_stoic below:
     leftover_ox_left = a*leftover_ox(1) + (1.0_WP-a)*leftover_ox(3)

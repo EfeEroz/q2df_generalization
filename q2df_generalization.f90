@@ -58,7 +58,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     if (.not. (in_range(Z1_CFD) .and. in_range(Z2_CFD) .and. in_range(Z1_CFD+Z2_CFD))) then
         print *, "Mixture fraction input invalid:", "Z1 =", Z1_CFD, "Z2 =", Z2_CFD
     end if
-    if (chi11_CFD<-TOLER .or. chi22_CFD<-TOLER .or. chi12_CFD**2 - TOLER > chi11_CFD*chi22_CFD) then
+    if (chi11_CFD<-TOLER .or. chi22_CFD<-TOLER .or. chi12_CFD**2.0_WP - TOLER > chi11_CFD*chi22_CFD) then
         print *, "Dissipation rate input invalid:", "chi11 =", chi11_CFD, "chi12 =", chi12_CFD, "chi22 =", chi22_CFD
     end if
     if (leftover_ox1_CFD * leftover_ox2_CFD > 0.0_WP .and. leftover_ox1_CFD * leftover_ox3_CFD > 0.0_WP) then
@@ -81,7 +81,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
         end if
     end if
 
-    ! Z1_CFD_new = Z1_CFD; Z2_CFD_new = Z2_CFD; chi11_CFD_new = chi11_CFD; chi12_CFD_new = chi12_CFD; chi22_CFD_new = chi22_CFD
+    ! Z1_CFD_new = Z1_CFD; Z2_CFD_new = Z2_CFD; chi11_CFD_new = chi11_CFD; chi12_CFD_new = chi12_CFD; chi22_CFD_new = chi22_CFD   ! Make sure this is commented out
 
     Z = [Z1_CFD_new, Z2_CFD_new, 1.0_WP - Z1_CFD_new - Z2_CFD_new]
 
@@ -93,6 +93,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     chi(3,1) = chi13_CFD; chi(3,2) = chi23_CFD; chi(3, 3) = chi33_CFD
 
     chi_ratio_opt = huge(1.0_WP) * 0.99_WP
+    i_opt = 1; j_opt = 3; x_opt = 0.0_WP
     leftover_ox_CFD = [leftover_ox1_CFD, leftover_ox2_CFD, leftover_ox3_CFD]
     ! Permutes the stream identities by changing i and j, thereby giving every possible one-dimensional 
     ! domain consideration
@@ -147,6 +148,10 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
         end do
     end do
 
+    if (.not. (i_opt == 1 .and. j_opt == 3 .and. eq(x_opt, 0.0_WP))) then
+        print *, "Was changed"
+    end if
+    
     leftover_ox = [leftover_ox_CFD(i_opt), leftover_ox_CFD(j_opt), leftover_ox_CFD(1+2+3-i_opt-j_opt)]
     call set_dom_cand_inputs(Z(i_opt), Z(j_opt), chi(i_opt, i_opt), chi(i_opt, j_opt), chi(j_opt, j_opt), x_opt)
     call get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic)
@@ -298,7 +303,7 @@ subroutine get_x_extrema(Z1, Z2, chi11, chi12, chi22, x_extrema)
         end if
     end do
 
-    if (counter < GRID/4) print *, "Low counter", counter
+    ! if (counter < GRID/4) print *, "Low counter", counter
 
     allocate(x_extrema(0))
     do i = 2, counter-1
