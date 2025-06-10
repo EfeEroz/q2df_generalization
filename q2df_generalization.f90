@@ -35,6 +35,8 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     real(WP), intent(out) :: chi_eta, x_prime, Z_val, eta ! Outputs not necessary for CFD, but instructive to dump
     real(WP), intent(out) :: Z_stoic
 
+    type(Domain_Cand) :: dom_cand
+
     ! Making arrays of the mixture fractions, dissipation rates, and leftover oxygen to make the data storage
     ! "symmetric" with regard to Z1, Z2, and Z3 rather than just storing Z1, Z2, and their dissipation rates
     real(WP), dimension(3) :: Z
@@ -132,8 +134,8 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
                 
                 do k = 1, size(x_opt_candidates)
                     x_opt_candidate = x_opt_candidates(k)
-                    call set_dom_cand_inputs(Z1, Z2, chi11, chi12, chi22, x_opt_candidate)
-                    chi_ratio = get_chi_ratio()
+                    call dom_cand%domain_cand_init(Z1, Z2, chi11, chi12, chi22, x_opt_candidate)
+                    chi_ratio = dom_cand%cand_chi_ratio
 
                     if (chi_ratio < chi_ratio_opt .and. chi_ratio > -0.5_WP) then
                         i_opt = i
@@ -153,13 +155,13 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     end if
     
     leftover_ox = [leftover_ox_CFD(i_opt), leftover_ox_CFD(j_opt), leftover_ox_CFD(1+2+3-i_opt-j_opt)]
-    call set_dom_cand_inputs(Z(i_opt), Z(j_opt), chi(i_opt, i_opt), chi(i_opt, j_opt), chi(j_opt, j_opt), x_opt)
-    call get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic)
+    call dom_cand%domain_cand_init(Z(i_opt), Z(j_opt), chi(i_opt, i_opt), chi(i_opt, j_opt), chi(j_opt, j_opt), x_opt)
+    call dom_cand%get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic)
 
     ! Add testing with Q2DF2 (make sure chi ratio is computed correctly for Q2DF2 and that the generalized choice
     ! is at least as good as Q2DF2, as quantified by psi (chi ratio)
-    call set_dom_cand_inputs(Z(1), Z(3), chi(1, 1), chi(1, 3), chi(3, 3), 0.001_WP)   ! Robust: x further from 0.0_WP to account for robustness/fuziness in chi_ratio procedure
-    q2df2_chi_ratio = get_chi_ratio()
+    call dom_cand%domain_cand_init(Z(1), Z(3), chi(1, 1), chi(1, 3), chi(3, 3), 0.001_WP)   ! Robust: x further from 0.0_WP to account for robustness/fuziness in chi_ratio procedure
+    q2df2_chi_ratio = dom_cand%cand_chi_ratio
     q2df2_xi = Z(1) + Z(3)
     q2df2_eta = Z(3) / (Z(1) + Z(3))
     q2df2_chi_ratio_check = (chi(1, 1) + 2.0_WP*(1.0_WP-q2df2_eta)*chi(1, 2) + (1.0_WP-q2df2_eta)**2.0_WP*chi(2, 2)) / &
@@ -285,6 +287,7 @@ subroutine get_x_extrema(Z1, Z2, chi11, chi12, chi22, x_extrema)
 
     real(WP), intent(in) :: Z1, Z2, chi11, chi12, chi22
     real(WP), allocatable, dimension(:), intent(out) :: x_extrema
+    type(Domain_Cand) :: dom_cand
     integer, parameter :: GRID = 1000
     real(WP), dimension(GRID) :: chi_ratio_arr, x_val_arr
     real(WP) :: start_pos, step_size, chi_ratio
@@ -294,8 +297,8 @@ subroutine get_x_extrema(Z1, Z2, chi11, chi12, chi22, x_extrema)
     step_size = (1.0_WP - 2.0_WP*start_pos) / (GRID - 1)
     counter = 0
     do i = 1, GRID
-        call set_dom_cand_inputs(Z1, Z2, chi11, chi12, chi22, start_pos + step_size*(i-1))
-        chi_ratio = get_chi_ratio()
+        call dom_cand%domain_cand_init(Z1, Z2, chi11, chi12, chi22, start_pos + step_size*(i-1))
+        chi_ratio = dom_cand%cand_chi_ratio
         if (chi_ratio > -0.5_WP) then
             counter = counter + 1
             chi_ratio_arr(counter) = chi_ratio
