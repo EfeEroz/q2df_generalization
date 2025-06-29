@@ -19,7 +19,7 @@ program q2df_generalization
 ! IMPORTANT: Do not forget to use the mkl library erfc^-1 function to find chi_ZZ at reference mixture fraction
 ! given that it is chi_xi at Z_opt. Z_stoic is also output by the program for convenience.
 subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, leftover_ox1_CFD, &
-    leftover_ox2_CFD, leftover_ox3_CFD, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic)
+    leftover_ox2_CFD, leftover_ox3_CFD, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic, j_opt, complement_xi)
     ! Here, the real numbers leftover_ox# represent the kg's of oxygen mass leftover if complete combustion is
     ! done on 1 kg of stream #. As expected, negative indicates stream # is fuel-rich.
     use precision
@@ -34,6 +34,8 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     real(WP), intent(out) :: chi_xi
     real(WP), intent(out) :: chi_eta, x_prime, Z_val, eta ! Outputs not necessary for CFD, but instructive to dump
     real(WP), intent(out) :: Z_stoic
+    integer, intent(out) :: j_opt
+    logical, intent(out) :: complement_xi
 
     type(Domain_Cand) :: dom_cand
 
@@ -46,7 +48,7 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
 
     real(WP) :: Z1, Z2, chi11, chi12, chi22
     real(WP), dimension(3) :: leftover_ox
-    integer :: i, j, i_opt, j_opt
+    integer :: i, j, i_opt
     real(WP) :: x_opt, chi_ratio_opt
     real(WP), allocatable, dimension(:) :: left_endpoints, right_endpoints
     real(WP), allocatable, dimension(:) :: x_extrema
@@ -156,7 +158,8 @@ subroutine get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, left
     
     leftover_ox = [leftover_ox_CFD(i_opt), leftover_ox_CFD(j_opt), leftover_ox_CFD(1+2+3-i_opt-j_opt)]
     call dom_cand%domain_cand_init(Z(i_opt), Z(j_opt), chi(i_opt, i_opt), chi(i_opt, j_opt), chi(j_opt, j_opt), x_opt)
-    call dom_cand%get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic)
+    call dom_cand%get_final_vars(i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic, &
+        complement_xi)
 
     ! Add testing with Q2DF2 (make sure chi ratio is computed correctly for Q2DF2 and that the generalized choice
     ! is at least as good as Q2DF2, as quantified by psi (chi ratio)
@@ -338,9 +341,11 @@ subroutine indiv_test_get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi2
     real(WP), intent(in) :: Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, leftover_ox1_CFD, leftover_ox2_CFD, leftover_ox3_CFD
     real(WP), dimension(3) :: OMIX, FMIX
     real(WP) :: chi_xi, chi_eta, x_prime, Z_opt, eta_opt, Z_stoic
+    integer :: j_opt
+    logical :: complement_xi
 
     call get_optimal_bcs(Z1_CFD, Z2_CFD, chi11_CFD, chi12_CFD, chi22_CFD, leftover_ox1_CFD, leftover_ox2_CFD, &
-        leftover_ox3_CFD, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_opt, eta_opt, Z_stoic)
+        leftover_ox3_CFD, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_opt, eta_opt, Z_stoic, j_opt, complement_xi)
     print *, "For Z1 =", Z1_CFD, "Z2 =", Z2_CFD, "chi11 =", chi11_CFD, "chi12 =", chi12_CFD, "chi22 =", chi22_CFD
     print *, "    OMIX =", OMIX
     print *, "    FMIX =", FMIX
@@ -363,6 +368,8 @@ subroutine test_get_optimal_bcs()
     real(WP), dimension(3) :: OMIX, FMIX
     real(WP) :: chi_xi
     real(WP) :: chi_eta, x_prime, eta_opt, Z_opt, Z_stoic
+    integer :: j_opt
+    logical :: complement_xi
 
     integer :: num_failures
     num_failures = 0
@@ -1162,7 +1169,7 @@ subroutine test_get_optimal_bcs()
         print *, "Checking ", i
         call get_optimal_bcs(Z1_CFD_list(i), Z2_CFD_list(i), chi11_CFD_list(i), chi12_CFD_list(i), &
             chi22_CFD_list(i), leftover_ox1_CFD, leftover_ox2_CFD, leftover_ox3_CFD, OMIX, FMIX, chi_xi, &
-            chi_eta, x_prime, Z_opt, eta_opt, Z_stoic)
+            chi_eta, x_prime, Z_opt, eta_opt, Z_stoic, j_opt, complement_xi)
         num_failures = num_failures + is_failure(OMIX_truth(i, 1), OMIX(1), "OMIX1")
         num_failures = num_failures + is_failure(OMIX_truth(i, 2), OMIX(2), "OMXI2")
         num_failures = num_failures + is_failure(OMIX_truth(i, 3), OMIX(3), "OMIX3")

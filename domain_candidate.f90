@@ -67,7 +67,7 @@ subroutine domain_cand_init(this, Z1_in, Z2_in, chi11_in, chi12_in, chi22_in, x_
 
 end subroutine domain_cand_init
 
-subroutine get_final_vars(this, i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic)
+subroutine get_final_vars(this, i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic, complement_xi)
     use precision
     implicit none
     class(Domain_Cand), intent(inout) :: this
@@ -75,12 +75,12 @@ subroutine get_final_vars(this, i_opt, j_opt, leftover_ox, OMIX, FMIX, chi_xi, c
     real(WP), dimension(3), intent(in) :: leftover_ox
     real(WP), dimension(3), intent(out) :: OMIX, FMIX
     real(WP), intent(out) :: chi_xi, chi_eta, x_prime, Z_val, eta, Z_stoic
+    logical, intent(out) :: complement_xi
 
     real(WP) :: a
     real(WP) :: leftover_ox_left, leftover_ox_right
     real(WP), dimension(3) :: OMIX_shuffled, FMIX_shuffled
     real(WP) :: x_prime_left, x_prime_right
-    logical :: complement_xi
     real(WP) :: sum_Z1_Z2
 
     if (this%cand_chi_ratio > -0.5_WP) then
